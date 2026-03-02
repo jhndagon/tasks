@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+      - edited
+  push:
+    branches:
+      - main
+      - develop
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Tests (Python 3.11)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Validate PR source branch by target branch
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          echo "Validating PR flow: ${HEAD_REF} -> ${BASE_REF}"
+
+          if [ "${BASE_REF}" = "main" ]; then
+            if [[ ! "${HEAD_REF}" =~ ^release/.+ ]]; then
+              echo "ERROR: PRs to 'main' must come from 'release/*' branches."
+              exit 1
+            fi
+          fi
+
+          if [ "${BASE_REF}" = "develop" ]; then
+            if [[ ! "${HEAD_REF}" =~ ^feature/.+ ]]; then
+              echo "ERROR: PRs to 'develop' must come from 'feature/*' branches."
+              exit 1
+            fi
+          fi
+
+          echo "Branch policy passed."
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run test suite
+        run: pytest -q
