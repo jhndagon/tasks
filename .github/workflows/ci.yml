@@ -21,14 +21,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  branch-policy:
-    name: Branch Policy
+  tests:
+    name: Tests (Python 3.11)
     runs-on: ubuntu-latest
-    timeout-minutes: 2
-    if: github.event_name == 'pull_request'
+    timeout-minutes: 10
 
     steps:
       - name: Validate PR source branch by target branch
+        if: github.event_name == 'pull_request'
         env:
           BASE_REF: ${{ github.base_ref }}
           HEAD_REF: ${{ github.head_ref }}
@@ -51,12 +51,6 @@ jobs:
 
           echo "Branch policy passed."
 
-  tests:
-    name: Tests (Python 3.11)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    steps:
       - name: Checkout
         uses: actions/checkout@v4
 
