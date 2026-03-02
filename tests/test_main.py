@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def client(tmp_path_factory):
     db_path = tmp_path_factory.mktemp("db") / "test.db"
     import os
@@ -48,3 +48,15 @@ def test_crud_flow(client: TestClient):
     missing_update_response = client.put(f"/tasks/{task_id}", json={"done": False})
     assert missing_update_response.status_code == 404
     assert missing_update_response.json()["detail"] == "Task not found"
+
+
+def test_create_task_with_blank_title_returns_422(client: TestClient):
+    response = client.post("/tasks", json={"title": "   "})
+    assert response.status_code == 422
+    assert "cannot be empty" in response.json()["detail"]
+
+
+def test_delete_missing_task_returns_404(client: TestClient):
+    response = client.delete("/tasks/99999")
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Task not found"

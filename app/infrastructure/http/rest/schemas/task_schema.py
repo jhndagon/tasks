@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -10,8 +13,8 @@ class TaskCreateRequest(BaseModel):
 
 
 class TaskUpdateRequest(BaseModel):
-    title: str | None = Field(default=None, min_length=1, max_length=255)
-    done: bool | None = None
+    title: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    done: Optional[bool] = None
 
 
 class TaskResponse(BaseModel):

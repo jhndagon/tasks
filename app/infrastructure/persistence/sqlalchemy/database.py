@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from collections.abc import AsyncGenerator
 
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import NoSuchModuleError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -36,7 +38,15 @@ def _build_engine() -> AsyncEngine:
     settings = get_settings()
     database_url = _normalize_database_url(settings.turso_database_url)
     connect_args = _build_connect_args(settings.turso_auth_token)
-    return create_async_engine(database_url, connect_args=connect_args, future=True)
+    try:
+        return create_async_engine(database_url, connect_args=connect_args, future=True)
+    except NoSuchModuleError as exc:
+        if database_url.startswith("sqlite+libsql://"):
+            raise RuntimeError(
+                "Turso driver missing. Install optional dependency with: "
+                "pip install -r requirements-turso.txt"
+            ) from exc
+        raise
 
 
 engine = _build_engine()

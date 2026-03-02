@@ -4,7 +4,7 @@ from datetime import datetime
 from app.domain.task.value_objects import TaskTitle
 
 
-@dataclass(slots=True)
+@dataclass
 class Task:
     id: int
     title: TaskTitle
