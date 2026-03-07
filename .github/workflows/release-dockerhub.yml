@@ -2,12 +2,12 @@ name: Release Docker Image
 
 on:
   workflow_dispatch:
-  push:
+  pull_request:
+    types:
+      - closed
     branches:
       - main
       - develop
-    paths-ignore:
-      - helm/python-api/values.yaml
 
 concurrency:
   group: release-docker-${{ github.ref }}
@@ -16,6 +16,11 @@ concurrency:
 jobs:
   build-and-push:
     name: Build and Push Docker Image
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.merged == true &&
+       !startsWith(github.event.pull_request.head.ref, 'chore/helm-image-tag-'))
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -33,10 +38,28 @@ jobs:
           echo "actor=${GITHUB_ACTOR}"
           echo "ref=${GITHUB_REF}"
           echo "ref_name=${GITHUB_REF_NAME}"
+          echo "event=${GITHUB_EVENT_NAME}"
+
+      - name: Determine release context
+        id: context
+        run: |
+          set -euo pipefail
+
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            TARGET_BRANCH="${GITHUB_BASE_REF}"
+            CHECKOUT_REF="${{ github.event.pull_request.merge_commit_sha }}"
+          else
+            TARGET_BRANCH="${GITHUB_REF_NAME}"
+            CHECKOUT_REF="${GITHUB_SHA}"
+          fi
+
+          echo "target_branch=${TARGET_BRANCH}" >> "$GITHUB_OUTPUT"
+          echo "checkout_ref=${CHECKOUT_REF}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          ref: ${{ steps.context.outputs.checkout_ref }}
           fetch-depth: 0
 
       - name: Validate required secrets
@@ -50,14 +73,30 @@ jobs:
         run: |
           set -euo pipefail
 
-          CREATED="false"
+          TARGET_BRANCH="${{ steps.context.outputs.target_branch }}"
           RELEASE_KIND="dev"
 
-          if [ "${GITHUB_REF_NAME}" = "main" ]; then
-            TAG="v${MAJOR_MINOR}.${GITHUB_RUN_NUMBER}"
+          if [ "${TARGET_BRANCH}" = "main" ]; then
             RELEASE_KIND="main"
+            LAST_TAG="$(git tag -l 'v0.1.*' | sort -V | tail -n 1)"
+            if [ -z "${LAST_TAG}" ]; then
+              PATCH=1
+            else
+              PATCH=$(( ${LAST_TAG##*.} + 1 ))
+            fi
+            TAG="v${MAJOR_MINOR}.${PATCH}"
+
+            while git ls-remote --exit-code --tags origin "refs/tags/${TAG}" > /dev/null 2>&1; do
+              PATCH=$((PATCH + 1))
+              TAG="v${MAJOR_MINOR}.${PATCH}"
+            done
           else
-            TAG="dev-${GITHUB_RUN_NUMBER}"
+            TAG="dev-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+            DEV_SEQ=0
+            while git ls-remote --exit-code --tags origin "refs/tags/${TAG}" > /dev/null 2>&1; do
+              DEV_SEQ=$((DEV_SEQ + 1))
+              TAG="dev-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${DEV_SEQ}"
+            done
           fi
 
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
@@ -67,22 +106,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git remote set-url origin "https://x-access-token:${GH_TOKEN_FOR_TAGS}@github.com/${GITHUB_REPOSITORY}.git"
           git fetch --tags --force
-
-          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" > /dev/null 2>&1; then
-            echo "Tag ${TAG} already exists in origin; skipping creation."
-          else
-            git tag -a "${TAG}" -m "Release ${TAG}"
-            if git push origin "${TAG}"; then
-              CREATED="true"
-            else
-              echo "WARNING: could not push git tag ${TAG}. Continuing with Docker publish."
-            fi
-          fi
-
-          echo "tag_created=${CREATED}" >> "$GITHUB_OUTPUT"
+          git tag -a "${TAG}" -m "Release ${TAG}"
+          git push origin "${TAG}"
 
       - name: Create GitHub Release
-        if: steps.release.outputs.tag_created == 'true' && steps.release.outputs.release_kind == 'main'
+        if: steps.release.outputs.release_kind == 'main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.release.outputs.tag }}
@@ -142,8 +170,8 @@ jobs:
           title: chore(deploy): update image tag to ${{ steps.release.outputs.tag }}
           body: |
             Automated image tag update after Docker release.
-          branch: chore/helm-image-tag-${{ github.ref_name }}-${{ steps.release.outputs.tag }}
-          base: ${{ github.ref_name }}
+          branch: chore/helm-image-tag-${{ steps.context.outputs.target_branch }}-${{ steps.release.outputs.tag }}
+          base: ${{ steps.context.outputs.target_branch }}
           add-paths: |
             helm/python-api/values.yaml
           delete-branch: true
