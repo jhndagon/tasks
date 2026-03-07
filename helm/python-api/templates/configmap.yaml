@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "python-api.fullname" . }}-config
+  labels:
+    {{- include "python-api.labels" . | nindent 4 }}
+data:
+  PORT: {{ .Values.env.config.PORT | quote }}
+  TURSO_DATABASE_URL: {{ .Values.env.config.TURSO_DATABASE_URL | quote }}
