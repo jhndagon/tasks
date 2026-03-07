@@ -54,8 +54,8 @@ spec:
             - name: TURSO_AUTH_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "python-api.fullname" . }}-secret
-                  key: TURSO_AUTH_TOKEN
+                  name: {{ if .Values.env.secret.existingSecretName }}{{ .Values.env.secret.existingSecretName }}{{ else }}{{ include "python-api.fullname" . }}-secret{{ end }}
+                  key: {{ .Values.env.secret.existingSecretKey | default "TURSO_AUTH_TOKEN" }}
           {{- if .Values.livenessProbe.enabled }}
           livenessProbe:
             httpGet:

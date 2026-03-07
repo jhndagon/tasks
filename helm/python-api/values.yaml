@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: jhndagon11/tasks
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
   tag: latest
 
 nameOverride: ""
@@ -68,8 +68,11 @@ readinessProbe:
 env:
   config:
     PORT: "8000"
-    TURSO_DATABASE_URL: "sqlite+aiosqlite:///./local.db"
+    TURSO_DATABASE_URL: "sqlite+aiosqlite:////tmp/local.db"
   secret:
+    create: true
+    existingSecretName: ""
+    existingSecretKey: TURSO_AUTH_TOKEN
     TURSO_AUTH_TOKEN: ""
 
 nodeSelector: {}
