@@ -22,6 +22,7 @@ Modelo principal:
 - `GET /`
 - `GET /healthz`
 - `GET /tasks`
+- `GET /tasks?done=true|false`
 - `POST /tasks`
 - `PUT /tasks/{task_id}`
 - `DELETE /tasks/{task_id}`
