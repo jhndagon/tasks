@@ -48,14 +48,14 @@ spec:
                   key: PORT
             - name: TURSO_DATABASE_URL
               valueFrom:
-                configMapKeyRef:
-                  name: {{ include "python-api.fullname" . }}-config
-                  key: TURSO_DATABASE_URL
+                secretKeyRef:
+                  name: {{ if .Values.env.secret.existingSecretName }}{{ .Values.env.secret.existingSecretName }}{{ else }}{{ include "python-api.fullname" . }}-secret{{ end }}
+                  key: {{ .Values.env.secret.databaseUrlKey | default "TURSO_DATABASE_URL" }}
             - name: TURSO_AUTH_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "python-api.fullname" . }}-secret
-                  key: TURSO_AUTH_TOKEN
+                  name: {{ if .Values.env.secret.existingSecretName }}{{ .Values.env.secret.existingSecretName }}{{ else }}{{ include "python-api.fullname" . }}-secret{{ end }}
+                  key: {{ .Values.env.secret.authTokenKey | default "TURSO_AUTH_TOKEN" }}
           {{- if .Values.livenessProbe.enabled }}
           livenessProbe:
             httpGet:

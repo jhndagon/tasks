@@ -7,7 +7,7 @@ on:
 
 concurrency:
   group: release-docker-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build-and-push:
@@ -48,6 +48,9 @@ jobs:
             git push origin "${TAG}"
           fi
 
+      - name: Set up QEMU (for multi-arch)
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -63,7 +66,14 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: |
             ${{ env.IMAGE_REPOSITORY }}:${{ steps.release.outputs.tag }}
             ${{ env.IMAGE_REPOSITORY }}:latest
             ${{ env.IMAGE_REPOSITORY }}:sha-${{ github.sha }}
+
+      - name: Force latest to current release digest
+        run: |
+          docker buildx imagetools create \
+            -t "${IMAGE_REPOSITORY}:latest" \
+            "${IMAGE_REPOSITORY}:${{ steps.release.outputs.tag }}"

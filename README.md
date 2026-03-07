@@ -135,7 +135,7 @@ El chart de Helm está en `helm/python-api`.
 ```bash
 helm upgrade --install python-api ./helm/python-api \
   --namespace default \
-  --set env.config.TURSO_DATABASE_URL="sqlite+aiosqlite:///./local.db" \
+  --set env.config.TURSO_DATABASE_URL="sqlite+aiosqlite:////tmp/local.db" \
   --set env.secret.TURSO_AUTH_TOKEN=""
 ```
 
@@ -162,6 +162,29 @@ Secrets requeridos en GitHub:
 - `DOCKERHUB_USERNAME`
 - `DOCKERHUB_TOKEN`
 - `RELEASE_TOKEN` (opcional, recomendado si `GITHUB_TOKEN` no puede crear tags por políticas del repo)
+
+## Turso token sin exponerlo en Git (ArgoCD/Helm)
+
+Puedes usar un Secret ya existente en el cluster y referenciarlo desde Helm.
+
+1. Crear secret en el namespace de la app:
+
+```bash
+kubectl -n default create secret generic python-api-turso \
+  --from-literal=TURSO_AUTH_TOKEN='tu_token'
+```
+
+2. En tus values de ArgoCD/Helm:
+
+```yaml
+env:
+  secret:
+    create: false
+    existingSecretName: python-api-turso
+    existingSecretKey: TURSO_AUTH_TOKEN
+```
+
+Asi el token no queda en `values.yaml` ni en el repo.
 
 ## Ejecutar tests
 
