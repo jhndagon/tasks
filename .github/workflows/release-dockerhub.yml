@@ -12,6 +12,7 @@ concurrency:
 jobs:
   build-and-push:
     name: Build and Push Docker Image
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -77,3 +78,24 @@ jobs:
           docker buildx imagetools create \
             -t "${IMAGE_REPOSITORY}:latest" \
             "${IMAGE_REPOSITORY}:${{ steps.release.outputs.tag }}"
+
+      - name: Update Helm chart image tag
+        run: |
+          set -euo pipefail
+
+          NEW_TAG="${{ steps.release.outputs.tag }}"
+          VALUES_FILE="helm/python-api/values.yaml"
+
+          sed -E -i.bak "s/^  tag: .*/  tag: ${NEW_TAG}/" "${VALUES_FILE}"
+          rm -f "${VALUES_FILE}.bak"
+
+          if git diff --quiet -- "${VALUES_FILE}"; then
+            echo "No Helm values changes detected."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "${VALUES_FILE}"
+          git commit -m "chore(deploy): update image tag to ${NEW_TAG}"
+          git push origin HEAD:main
