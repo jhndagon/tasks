@@ -7,7 +7,7 @@ on:
 
 concurrency:
   group: release-docker-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build-and-push:
@@ -67,3 +67,9 @@ jobs:
             ${{ env.IMAGE_REPOSITORY }}:${{ steps.release.outputs.tag }}
             ${{ env.IMAGE_REPOSITORY }}:latest
             ${{ env.IMAGE_REPOSITORY }}:sha-${{ github.sha }}
+
+      - name: Force latest to current release digest
+        run: |
+          docker buildx imagetools create \
+            -t "${IMAGE_REPOSITORY}:latest" \
+            "${IMAGE_REPOSITORY}:${{ steps.release.outputs.tag }}"
