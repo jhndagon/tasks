@@ -1,6 +1,7 @@
 name: Release Docker Image
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -15,7 +16,6 @@ concurrency:
 jobs:
   build-and-push:
     name: Build and Push Docker Image
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -28,10 +28,22 @@ jobs:
       GH_TOKEN_FOR_TAGS: ${{ secrets.RELEASE_TOKEN != '' && secrets.RELEASE_TOKEN || github.token }}
 
     steps:
+      - name: Show run context
+        run: |
+          echo "actor=${GITHUB_ACTOR}"
+          echo "ref=${GITHUB_REF}"
+          echo "ref_name=${GITHUB_REF_NAME}"
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Validate required secrets
+        run: |
+          set -euo pipefail
+          [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ] || (echo "Missing DOCKERHUB_USERNAME secret" && exit 1)
+          [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ] || (echo "Missing DOCKERHUB_TOKEN secret" && exit 1)
 
       - name: Compute and push release tag
         id: release
@@ -106,6 +118,11 @@ jobs:
           docker buildx imagetools create \
             -t "${IMAGE_REPOSITORY}:latest" \
             "${IMAGE_REPOSITORY}:${{ steps.release.outputs.tag }}"
+
+      - name: Verify DockerHub tags
+        run: |
+          docker buildx imagetools inspect "${IMAGE_REPOSITORY}:${{ steps.release.outputs.tag }}"
+          docker buildx imagetools inspect "${IMAGE_REPOSITORY}:latest"
 
       - name: Update Helm chart image tag
         run: |
