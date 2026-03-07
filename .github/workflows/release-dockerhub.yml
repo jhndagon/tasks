@@ -6,6 +6,8 @@ on:
     branches:
       - main
       - develop
+    paths-ignore:
+      - helm/python-api/values.yaml
 
 concurrency:
   group: release-docker-${{ github.ref }}
@@ -18,6 +20,7 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: write
+      pull-requests: write
 
     env:
       MAJOR_MINOR: "0.1"
@@ -127,3 +130,27 @@ jobs:
         run: |
           docker buildx imagetools inspect "${IMAGE_REPOSITORY}:${{ steps.release.outputs.tag }}"
           docker buildx imagetools inspect "${IMAGE_REPOSITORY}:latest"
+
+      - name: Update Helm chart image tag
+        run: |
+          set -euo pipefail
+
+          NEW_TAG="${{ steps.release.outputs.tag }}"
+          VALUES_FILE="helm/python-api/values.yaml"
+
+          sed -E -i.bak "s/^  tag: .*/  tag: ${NEW_TAG}/" "${VALUES_FILE}"
+          rm -f "${VALUES_FILE}.bak"
+
+      - name: Create PR for Helm image tag update
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ env.GH_TOKEN_FOR_TAGS }}
+          commit-message: chore(deploy): update image tag to ${{ steps.release.outputs.tag }}
+          title: chore(deploy): update image tag to ${{ steps.release.outputs.tag }}
+          body: |
+            Automated image tag update after Docker release.
+          branch: chore/helm-image-tag-${{ github.ref_name }}-${{ steps.release.outputs.tag }}
+          base: ${{ github.ref_name }}
+          add-paths: |
+            helm/python-api/values.yaml
+          delete-branch: true
