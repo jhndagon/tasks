@@ -126,6 +126,41 @@ docker build --build-arg INSTALL_TURSO=true -t tasks-microservice:turso .
 docker run --rm -p 8000:8000 --env-file .env tasks-microservice:turso
 ```
 
+## Deploy con Helm
+
+El chart de Helm está en `helm/python-api`.
+
+### Instalar/reinstalar
+
+```bash
+helm upgrade --install python-api ./helm/python-api \
+  --namespace default \
+  --set env.config.TURSO_DATABASE_URL="sqlite+aiosqlite:///./local.db" \
+  --set env.secret.TURSO_AUTH_TOKEN=""
+```
+
+### Validar chart
+
+```bash
+helm lint ./helm/python-api
+helm template python-api ./helm/python-api
+```
+
+## Publicación a DockerHub (GitHub Actions)
+
+Se agregó el workflow `.github/workflows/release-dockerhub.yml` que en cada push a `main`:
+
+- Crea/pushea un tag Git con formato `v0.1.<run_number>`.
+- Construye la imagen desde `Dockerfile`.
+- Publica en DockerHub `jhndagon11/tasks` con tags:
+  - `v0.1.<run_number>`
+  - `latest`
+
+Secrets requeridos en GitHub:
+
+- `DOCKERHUB_USERNAME`
+- `DOCKERHUB_TOKEN`
+
 ## Ejecutar tests
 
 ```bash
