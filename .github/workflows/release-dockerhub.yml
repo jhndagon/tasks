@@ -20,6 +20,7 @@ jobs:
     env:
       MAJOR_MINOR: "0.1"
       IMAGE_REPOSITORY: jhndagon11/tasks
+      GH_TOKEN_FOR_TAGS: ${{ secrets.RELEASE_TOKEN != '' && secrets.RELEASE_TOKEN || github.token }}
 
     steps:
       - name: Checkout repository
@@ -37,6 +38,7 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN_FOR_TAGS}@github.com/${GITHUB_REPOSITORY}.git"
           git fetch --tags --force
 
           if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" > /dev/null 2>&1; then
@@ -64,3 +66,4 @@ jobs:
           tags: |
             ${{ env.IMAGE_REPOSITORY }}:${{ steps.release.outputs.tag }}
             ${{ env.IMAGE_REPOSITORY }}:latest
+            ${{ env.IMAGE_REPOSITORY }}:sha-${{ github.sha }}
