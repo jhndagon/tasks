@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - develop
     paths-ignore:
       - helm/python-api/values.yaml
 
@@ -37,20 +38,40 @@ jobs:
         run: |
           set -euo pipefail
 
-          TAG="v${MAJOR_MINOR}.${GITHUB_RUN_NUMBER}"
+          CREATED="false"
+
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            TAG="v${MAJOR_MINOR}.${GITHUB_RUN_NUMBER}"
+          else
+            TAG="dev-${GITHUB_RUN_NUMBER}"
+          fi
+
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin "https://x-access-token:${GH_TOKEN_FOR_TAGS}@github.com/${GITHUB_REPOSITORY}.git"
-          git fetch --tags --force
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git remote set-url origin "https://x-access-token:${GH_TOKEN_FOR_TAGS}@github.com/${GITHUB_REPOSITORY}.git"
+            git fetch --tags --force
 
-          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" > /dev/null 2>&1; then
-            echo "Tag ${TAG} already exists in origin; skipping creation."
-          else
-            git tag -a "${TAG}" -m "Release ${TAG}"
-            git push origin "${TAG}"
+            if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" > /dev/null 2>&1; then
+              echo "Tag ${TAG} already exists in origin; skipping creation."
+            else
+              git tag -a "${TAG}" -m "Release ${TAG}"
+              git push origin "${TAG}"
+              CREATED="true"
+            fi
           fi
+
+          echo "tag_created=${CREATED}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        if: steps.release.outputs.tag_created == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release.outputs.tag }}
+          generate_release_notes: true
+          token: ${{ env.GH_TOKEN_FOR_TAGS }}
 
       - name: Set up QEMU (for multi-arch)
         uses: docker/setup-qemu-action@v3
@@ -100,8 +121,8 @@ jobs:
           title: chore(deploy): update image tag to ${{ steps.release.outputs.tag }}
           body: |
             Automated image tag update after Docker release.
-          branch: chore/helm-image-tag-${{ steps.release.outputs.tag }}
-          base: main
+          branch: chore/helm-image-tag-${{ github.ref_name }}-${{ steps.release.outputs.tag }}
+          base: ${{ github.ref_name }}
           add-paths: |
             helm/python-api/values.yaml
           delete-branch: true

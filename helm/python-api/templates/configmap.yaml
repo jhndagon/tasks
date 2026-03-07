@@ -6,4 +6,3 @@ metadata:
     {{- include "python-api.labels" . | nindent 4 }}
 data:
   PORT: {{ .Values.env.config.PORT | quote }}
-  TURSO_DATABASE_URL: {{ .Values.env.config.TURSO_DATABASE_URL | quote }}
