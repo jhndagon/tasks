@@ -56,6 +56,29 @@ def test_create_task_with_blank_title_returns_422(client: TestClient):
     assert "cannot be empty" in response.json()["detail"]
 
 
+def test_list_tasks_can_filter_by_done(client: TestClient):
+    first_response = client.post("/tasks", json={"title": "Tarea pendiente"})
+    assert first_response.status_code == 201
+    first_task = first_response.json()
+
+    second_response = client.post("/tasks", json={"title": "Tarea completada"})
+    assert second_response.status_code == 201
+    second_task = second_response.json()
+
+    update_response = client.put(f"/tasks/{second_task['id']}", json={"done": True})
+    assert update_response.status_code == 200
+
+    pending_response = client.get("/tasks?done=false")
+    assert pending_response.status_code == 200
+    pending = pending_response.json()
+    assert [item["id"] for item in pending] == [first_task["id"]]
+
+    completed_response = client.get("/tasks?done=true")
+    assert completed_response.status_code == 200
+    completed = completed_response.json()
+    assert [item["id"] for item in completed] == [second_task["id"]]
+
+
 def test_delete_missing_task_returns_404(client: TestClient):
     response = client.delete("/tasks/99999")
     assert response.status_code == 404

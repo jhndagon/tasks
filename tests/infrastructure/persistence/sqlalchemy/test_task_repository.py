@@ -63,6 +63,31 @@ def test_repository_list_returns_ordered_tasks(tmp_path) -> None:
     asyncio.run(scenario())
 
 
+def test_repository_list_filters_by_done(tmp_path) -> None:
+    async def scenario() -> None:
+        engine, session_factory = await _build_session_factory(
+            f"sqlite+aiosqlite:///{tmp_path / 'repo_list_filtered.db'}"
+        )
+        try:
+            async with session_factory() as session:
+                repository = SQLAlchemyTaskRepository(session)
+                pending = await repository.create(title=TaskTitle("Pendiente"))
+                completed = await repository.create(title=TaskTitle("Completada"))
+
+                completed.mark_done()
+                await repository.save(completed)
+
+                pending_tasks = await repository.list(done=False)
+                completed_tasks = await repository.list(done=True)
+
+                assert [task.id for task in pending_tasks] == [pending.id]
+                assert [task.id for task in completed_tasks] == [completed.id]
+        finally:
+            await engine.dispose()
+
+    asyncio.run(scenario())
+
+
 def test_repository_save_updates_task(tmp_path) -> None:
     async def scenario() -> None:
         engine, session_factory = await _build_session_factory(f"sqlite+aiosqlite:///{tmp_path / 'repo_save.db'}")

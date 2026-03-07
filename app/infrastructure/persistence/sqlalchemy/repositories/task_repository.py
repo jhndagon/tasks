@@ -22,8 +22,12 @@ class SQLAlchemyTaskRepository(ITaskRepository):
         await self.session.refresh(db_task)
         return TaskMapper.to_domain(db_task)
 
-    async def list(self) -> list[Task]:
-        result = await self.session.execute(select(TaskModel).order_by(TaskModel.id.asc()))
+    async def list(self, *, done: bool | None = None) -> list[Task]:
+        query = select(TaskModel)
+        if done is not None:
+            query = query.where(TaskModel.done == done)
+
+        result = await self.session.execute(query.order_by(TaskModel.id.asc()))
         return [TaskMapper.to_domain(item) for item in result.scalars().all()]
 
     async def get_by_id(self, task_id: int) -> Task | None:

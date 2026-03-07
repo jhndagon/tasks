@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -35,8 +35,8 @@ class TaskController:
         self.update_task_use_case = update_task_use_case
         self.delete_task_use_case = delete_task_use_case
 
-    async def list_tasks(self) -> list[TaskResponse]:
-        tasks = await self.list_tasks_use_case.execute(ListTasksQuery())
+    async def list_tasks(self, *, done: Optional[bool] = None) -> list[TaskResponse]:
+        tasks = await self.list_tasks_use_case.execute(ListTasksQuery(done=done))
         return [TaskResponse.from_domain(task) for task in tasks]
 
     async def create_task(self, payload: TaskCreateRequest) -> TaskResponse:
@@ -81,8 +81,9 @@ def get_task_controller(
 @router.get("", response_model=list[TaskResponse])
 async def list_tasks(
     controller: Annotated[TaskController, Depends(get_task_controller)],
+    done: Optional[bool] = None,
 ) -> list[TaskResponse]:
-    return await controller.list_tasks()
+    return await controller.list_tasks(done=done)
 
 
 @router.post("", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)

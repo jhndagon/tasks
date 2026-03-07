@@ -34,8 +34,11 @@ class FakeTaskRepository:
         self._next_id += 1
         return task
 
-    async def list(self) -> list[Task]:
-        return list(self._tasks.values())
+    async def list(self, *, done: bool | None = None) -> list[Task]:
+        tasks = list(self._tasks.values())
+        if done is None:
+            return tasks
+        return [task for task in tasks if task.done is done]
 
     async def get_by_id(self, task_id: int) -> Task | None:
         return self._tasks.get(task_id)
@@ -71,6 +74,23 @@ def test_list_tasks_handler_returns_existing_tasks() -> None:
 
     assert len(tasks) == 2
     assert [task.title.value for task in tasks] == ["A", "B"]
+
+
+def test_list_tasks_handler_filters_by_done() -> None:
+    repository = FakeTaskRepository()
+    create_handler = CreateTaskHandler(repository)
+    update_handler = UpdateTaskHandler(repository)
+    list_handler = ListTasksHandler(repository)
+
+    first = asyncio.run(create_handler.execute(CreateTaskCommand(title="Pendiente")))
+    second = asyncio.run(create_handler.execute(CreateTaskCommand(title="Completada")))
+    asyncio.run(update_handler.execute(UpdateTaskCommand(task_id=second.id, done=True)))
+
+    pending = asyncio.run(list_handler.execute(ListTasksQuery(done=False)))
+    completed = asyncio.run(list_handler.execute(ListTasksQuery(done=True)))
+
+    assert [task.id for task in pending] == [first.id]
+    assert [task.id for task in completed] == [second.id]
 
 
 def test_update_task_handler_updates_title_and_done() -> None:
