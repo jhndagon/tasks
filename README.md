@@ -155,11 +155,13 @@ Se agregó el workflow `.github/workflows/release-dockerhub.yml` que en cada pus
 - Publica en DockerHub `jhndagon11/tasks` con tags:
   - `v0.1.<run_number>`
   - `latest`
+  - `sha-<commit_sha>`
 
 Secrets requeridos en GitHub:
 
 - `DOCKERHUB_USERNAME`
 - `DOCKERHUB_TOKEN`
+- `RELEASE_TOKEN` (opcional, recomendado si `GITHUB_TOKEN` no puede crear tags por políticas del repo)
 
 ## Ejecutar tests
 
