@@ -2,9 +2,7 @@ name: Release Docker Image
 
 on:
   workflow_dispatch:
-  pull_request:
-    types:
-      - closed
+  push:
     branches:
       - main
       - develop
@@ -16,16 +14,10 @@ concurrency:
 jobs:
   build-and-push:
     name: Build and Push Docker Image
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' &&
-       github.event.pull_request.merged == true &&
-       !startsWith(github.event.pull_request.head.ref, 'chore/helm-image-tag-'))
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: write
-      pull-requests: write
 
     env:
       MAJOR_MINOR: "0.1"
@@ -40,26 +32,9 @@ jobs:
           echo "ref_name=${GITHUB_REF_NAME}"
           echo "event=${GITHUB_EVENT_NAME}"
 
-      - name: Determine release context
-        id: context
-        run: |
-          set -euo pipefail
-
-          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
-            TARGET_BRANCH="${GITHUB_BASE_REF}"
-            CHECKOUT_REF="${{ github.event.pull_request.merge_commit_sha }}"
-          else
-            TARGET_BRANCH="${GITHUB_REF_NAME}"
-            CHECKOUT_REF="${GITHUB_SHA}"
-          fi
-
-          echo "target_branch=${TARGET_BRANCH}" >> "$GITHUB_OUTPUT"
-          echo "checkout_ref=${CHECKOUT_REF}" >> "$GITHUB_OUTPUT"
-
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ steps.context.outputs.checkout_ref }}
           fetch-depth: 0
 
       - name: Validate required secrets
@@ -67,17 +42,19 @@ jobs:
           set -euo pipefail
           [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ] || (echo "Missing DOCKERHUB_USERNAME secret" && exit 1)
           [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ] || (echo "Missing DOCKERHUB_TOKEN secret" && exit 1)
+          [ -n "${{ env.GH_TOKEN_FOR_TAGS }}" ] || (echo "Missing RELEASE_TOKEN (or unusable github.token)" && exit 1)
 
       - name: Compute and push release tag
         id: release
         run: |
           set -euo pipefail
 
-          TARGET_BRANCH="${{ steps.context.outputs.target_branch }}"
+          TARGET_BRANCH="${GITHUB_REF_NAME}"
           RELEASE_KIND="dev"
 
           if [ "${TARGET_BRANCH}" = "main" ]; then
             RELEASE_KIND="main"
+            git fetch --tags --force
             LAST_TAG="$(git tag -l 'v0.1.*' | sort -V | tail -n 1)"
             if [ -z "${LAST_TAG}" ]; then
               PATCH=1
@@ -105,7 +82,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git remote set-url origin "https://x-access-token:${GH_TOKEN_FOR_TAGS}@github.com/${GITHUB_REPOSITORY}.git"
-          git fetch --tags --force
           git tag -a "${TAG}" -m "Release ${TAG}"
           git push origin "${TAG}"
 
@@ -151,27 +127,3 @@ jobs:
         run: |
           docker buildx imagetools inspect "${IMAGE_REPOSITORY}:${{ steps.release.outputs.tag }}"
           docker buildx imagetools inspect "${IMAGE_REPOSITORY}:latest"
-
-      - name: Update Helm chart image tag
-        run: |
-          set -euo pipefail
-
-          NEW_TAG="${{ steps.release.outputs.tag }}"
-          VALUES_FILE="helm/python-api/values.yaml"
-
-          sed -E -i.bak "s/^  tag: .*/  tag: ${NEW_TAG}/" "${VALUES_FILE}"
-          rm -f "${VALUES_FILE}.bak"
-
-      - name: Create PR for Helm image tag update
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ env.GH_TOKEN_FOR_TAGS }}
-          commit-message: chore(deploy): update image tag to ${{ steps.release.outputs.tag }}
-          title: chore(deploy): update image tag to ${{ steps.release.outputs.tag }}
-          body: |
-            Automated image tag update after Docker release.
-          branch: chore/helm-image-tag-${{ steps.context.outputs.target_branch }}-${{ steps.release.outputs.tag }}
-          base: ${{ steps.context.outputs.target_branch }}
-          add-paths: |
-            helm/python-api/values.yaml
-          delete-branch: true
