@@ -10,7 +10,12 @@ class ITaskRepository(Protocol):
     async def create(self, *, title: TaskTitle) -> Task:
         ...
 
-    async def list(self, *, done: bool | None = None) -> list[Task]:
+    async def list(
+        self,
+        *,
+        done: bool | None = None,
+        title_contains: str | None = None,
+    ) -> list[Task]:
         ...
 
     async def get_by_id(self, task_id: int) -> Task | None:
