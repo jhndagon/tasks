@@ -109,6 +109,27 @@ def test_repository_list_filters_by_title_contains(tmp_path) -> None:
     asyncio.run(scenario())
 
 
+def test_repository_list_filters_by_title_starts_with(tmp_path) -> None:
+    async def scenario() -> None:
+        engine, session_factory = await _build_session_factory(
+            f"sqlite+aiosqlite:///{tmp_path / 'repo_list_title_starts_with.db'}"
+        )
+        try:
+            async with session_factory() as session:
+                repository = SQLAlchemyTaskRepository(session)
+                first = await repository.create(title=TaskTitle("Comprar fruta"))
+                await repository.create(title=TaskTitle("Ir a comprar"))
+                third = await repository.create(title=TaskTitle("Comprometer agenda"))
+
+                matches = await repository.list(title_starts_with="comp")
+
+                assert [task.id for task in matches] == [first.id, third.id]
+        finally:
+            await engine.dispose()
+
+    asyncio.run(scenario())
+
+
 def test_repository_save_updates_task(tmp_path) -> None:
     async def scenario() -> None:
         engine, session_factory = await _build_session_factory(f"sqlite+aiosqlite:///{tmp_path / 'repo_save.db'}")

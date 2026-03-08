@@ -24,6 +24,7 @@ Modelo principal:
 - `GET /tasks`
 - `GET /tasks?done=true|false`
 - `GET /tasks?title_contains=<texto>`
+- `GET /tasks?title_starts_with=<texto>`
 - `POST /tasks`
 - `PUT /tasks/{task_id}`
 - `DELETE /tasks/{task_id}`
