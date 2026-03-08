@@ -167,8 +167,8 @@ jobs:
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ env.GH_TOKEN_FOR_TAGS }}
-          commit-message: chore(deploy): update image tag to ${{ steps.release.outputs.tag }}
-          title: chore(deploy): update image tag to ${{ steps.release.outputs.tag }}
+          commit-message: "chore(deploy): update image tag to ${{ steps.release.outputs.tag }}"
+          title: "chore(deploy): update image tag to ${{ steps.release.outputs.tag }}"
           body: |
             Automated image tag update after Docker release.
           branch: chore/helm-image-tag-${{ github.ref_name }}-${{ steps.release.outputs.tag }}
