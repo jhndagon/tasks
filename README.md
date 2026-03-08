@@ -150,7 +150,7 @@ helm template python-api ./helm/python-api
 
 ## Publicación a DockerHub (GitHub Actions)
 
-Se agregó el workflow `.github/workflows/release-dockerhub.yml` que en cada push a `main`:
+Se agregó el workflow `.github/workflows/release-dockerhub.yml` que en cada push a `main`, `develop` o `release/*`:
 
 - Crea/pushea un tag Git con formato `v0.1.<run_number>`.
 - Construye la imagen desde `Dockerfile`.
@@ -164,6 +164,7 @@ Secrets requeridos en GitHub:
 - `DOCKERHUB_USERNAME`
 - `DOCKERHUB_TOKEN`
 - `RELEASE_TOKEN` (opcional, recomendado si `GITHUB_TOKEN` no puede crear tags por políticas del repo)
+- `DOCKERHUB_REPOSITORY` (opcional, formato `namespace/name`; si no se define usa `${DOCKERHUB_USERNAME}/tasks`)
 
 ## Turso token sin exponerlo en Git (ArgoCD/Helm)
 
