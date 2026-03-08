@@ -34,11 +34,19 @@ class FakeTaskRepository:
         self._next_id += 1
         return task
 
-    async def list(self, *, done: bool | None = None) -> list[Task]:
+    async def list(
+        self,
+        *,
+        done: bool | None = None,
+        title_contains: str | None = None,
+    ) -> list[Task]:
         tasks = list(self._tasks.values())
-        if done is None:
-            return tasks
-        return [task for task in tasks if task.done is done]
+        if done is not None:
+            tasks = [task for task in tasks if task.done is done]
+        if title_contains is not None and title_contains.strip():
+            normalized = title_contains.strip().lower()
+            tasks = [task for task in tasks if normalized in task.title.value.lower()]
+        return tasks
 
     async def get_by_id(self, task_id: int) -> Task | None:
         return self._tasks.get(task_id)
@@ -91,6 +99,20 @@ def test_list_tasks_handler_filters_by_done() -> None:
 
     assert [task.id for task in pending] == [first.id]
     assert [task.id for task in completed] == [second.id]
+
+
+def test_list_tasks_handler_filters_by_title_contains() -> None:
+    repository = FakeTaskRepository()
+    create_handler = CreateTaskHandler(repository)
+    list_handler = ListTasksHandler(repository)
+
+    first = asyncio.run(create_handler.execute(CreateTaskCommand(title="Comprar leche")))
+    asyncio.run(create_handler.execute(CreateTaskCommand(title="Estudiar Python")))
+    third = asyncio.run(create_handler.execute(CreateTaskCommand(title="Lista de compras")))
+
+    matches = asyncio.run(list_handler.execute(ListTasksQuery(title_contains="COMPR")))
+
+    assert [task.id for task in matches] == [first.id, third.id]
 
 
 def test_update_task_handler_updates_title_and_done() -> None:

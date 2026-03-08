@@ -9,4 +9,4 @@ class ListTasksHandler(IListTasksUseCase):
         self.repository = repository
 
     async def execute(self, query: ListTasksQuery) -> list[Task]:
-        return await self.repository.list(done=query.done)
+        return await self.repository.list(done=query.done, title_contains=query.title_contains)

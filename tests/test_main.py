@@ -79,6 +79,26 @@ def test_list_tasks_can_filter_by_done(client: TestClient):
     assert [item["id"] for item in completed] == [second_task["id"]]
 
 
+def test_list_tasks_can_filter_by_title_contains(client: TestClient):
+    first_response = client.post("/tasks", json={"title": "Comprar pan"})
+    assert first_response.status_code == 201
+    first_task = first_response.json()
+
+    second_response = client.post("/tasks", json={"title": "Revisar correo"})
+    assert second_response.status_code == 201
+    second_task = second_response.json()
+
+    third_response = client.post("/tasks", json={"title": "Lista de compras"})
+    assert third_response.status_code == 201
+    third_task = third_response.json()
+
+    filtered_response = client.get("/tasks?title_contains=CoMPr")
+    assert filtered_response.status_code == 200
+    filtered = filtered_response.json()
+    assert [item["id"] for item in filtered] == [first_task["id"], third_task["id"]]
+    assert second_task["id"] not in [item["id"] for item in filtered]
+
+
 def test_delete_missing_task_returns_404(client: TestClient):
     response = client.delete("/tasks/99999")
     assert response.status_code == 404
