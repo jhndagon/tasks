@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - develop
+      - release/**
     paths-ignore:
       - helm/python-api/values.yaml
 
@@ -24,7 +25,6 @@ jobs:
 
     env:
       MAJOR_MINOR: "0.1"
-      IMAGE_REPOSITORY: jhndagon11/tasks
       GH_TOKEN_FOR_TAGS: ${{ secrets.RELEASE_TOKEN != '' && secrets.RELEASE_TOKEN || github.token }}
 
     steps:
@@ -46,6 +46,26 @@ jobs:
           [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ] || (echo "Missing DOCKERHUB_USERNAME secret" && exit 1)
           [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ] || (echo "Missing DOCKERHUB_TOKEN secret" && exit 1)
           [ -n "${{ env.GH_TOKEN_FOR_TAGS }}" ] || (echo "Missing RELEASE_TOKEN (or unusable github.token)" && exit 1)
+
+      - name: Resolve Docker repository
+        id: docker_repo
+        run: |
+          set -euo pipefail
+          IMAGE_REPOSITORY="${{ secrets.DOCKERHUB_REPOSITORY }}"
+          if [ -z "${IMAGE_REPOSITORY}" ]; then
+            IMAGE_REPOSITORY="${{ secrets.DOCKERHUB_USERNAME }}/tasks"
+          fi
+
+          case "${IMAGE_REPOSITORY}" in
+            */*) ;;
+            *)
+              echo "Invalid Docker repository '${IMAGE_REPOSITORY}'. Use <namespace>/<name>."
+              exit 1
+              ;;
+          esac
+
+          echo "repository=${IMAGE_REPOSITORY}" >> "$GITHUB_OUTPUT"
+          echo "docker_repository=${IMAGE_REPOSITORY}"
 
       - name: Compute and push release tag
         id: release
@@ -116,18 +136,20 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            ${{ env.IMAGE_REPOSITORY }}:${{ steps.release.outputs.tag }}
-            ${{ env.IMAGE_REPOSITORY }}:latest
-            ${{ env.IMAGE_REPOSITORY }}:sha-${{ github.sha }}
+            ${{ steps.docker_repo.outputs.repository }}:${{ steps.release.outputs.tag }}
+            ${{ steps.docker_repo.outputs.repository }}:latest
+            ${{ steps.docker_repo.outputs.repository }}:sha-${{ github.sha }}
 
       - name: Force latest to current release digest
         run: |
+          IMAGE_REPOSITORY="${{ steps.docker_repo.outputs.repository }}"
           docker buildx imagetools create \
             -t "${IMAGE_REPOSITORY}:latest" \
             "${IMAGE_REPOSITORY}:${{ steps.release.outputs.tag }}"
 
       - name: Verify DockerHub tags
         run: |
+          IMAGE_REPOSITORY="${{ steps.docker_repo.outputs.repository }}"
           docker buildx imagetools inspect "${IMAGE_REPOSITORY}:${{ steps.release.outputs.tag }}"
           docker buildx imagetools inspect "${IMAGE_REPOSITORY}:latest"
 
