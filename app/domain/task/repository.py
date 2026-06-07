@@ -15,6 +15,7 @@ class ITaskRepository(Protocol):
         *,
         done: bool | None = None,
         title_contains: str | None = None,
+        title_starts_with: str | None = None,
     ) -> list[Task]:
         ...
 

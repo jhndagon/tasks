@@ -39,6 +39,7 @@ class FakeTaskRepository:
         *,
         done: bool | None = None,
         title_contains: str | None = None,
+        title_starts_with: str | None = None,
     ) -> list[Task]:
         tasks = list(self._tasks.values())
         if done is not None:
@@ -46,6 +47,9 @@ class FakeTaskRepository:
         if title_contains is not None and title_contains.strip():
             normalized = title_contains.strip().lower()
             tasks = [task for task in tasks if normalized in task.title.value.lower()]
+        if title_starts_with is not None and title_starts_with.strip():
+            normalized_prefix = title_starts_with.strip().lower()
+            tasks = [task for task in tasks if task.title.value.lower().startswith(normalized_prefix)]
         return tasks
 
     async def get_by_id(self, task_id: int) -> Task | None:
@@ -111,6 +115,20 @@ def test_list_tasks_handler_filters_by_title_contains() -> None:
     third = asyncio.run(create_handler.execute(CreateTaskCommand(title="Lista de compras")))
 
     matches = asyncio.run(list_handler.execute(ListTasksQuery(title_contains="COMPR")))
+
+    assert [task.id for task in matches] == [first.id, third.id]
+
+
+def test_list_tasks_handler_filters_by_title_starts_with() -> None:
+    repository = FakeTaskRepository()
+    create_handler = CreateTaskHandler(repository)
+    list_handler = ListTasksHandler(repository)
+
+    first = asyncio.run(create_handler.execute(CreateTaskCommand(title="Comprar pan")))
+    asyncio.run(create_handler.execute(CreateTaskCommand(title="Ir a comprar leche")))
+    third = asyncio.run(create_handler.execute(CreateTaskCommand(title="Comprender hexagonal")))
+
+    matches = asyncio.run(list_handler.execute(ListTasksQuery(title_starts_with="coMpr")))
 
     assert [task.id for task in matches] == [first.id, third.id]
 

@@ -27,12 +27,17 @@ class SQLAlchemyTaskRepository(ITaskRepository):
         *,
         done: bool | None = None,
         title_contains: str | None = None,
+        title_starts_with: str | None = None,
     ) -> list[Task]:
         query = select(TaskModel)
         if done is not None:
             query = query.where(TaskModel.done == done)
         if title_contains is not None and title_contains.strip():
             query = query.where(func.lower(TaskModel.title).contains(title_contains.strip().lower()))
+        if title_starts_with is not None and title_starts_with.strip():
+            query = query.where(
+                func.lower(TaskModel.title).startswith(title_starts_with.strip().lower())
+            )
 
         result = await self.session.execute(query.order_by(TaskModel.id.asc()))
         return [TaskMapper.to_domain(item) for item in result.scalars().all()]
