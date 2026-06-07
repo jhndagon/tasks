@@ -167,6 +167,18 @@ Secrets requeridos en GitHub:
 - `RELEASE_TOKEN` (opcional, recomendado si `GITHUB_TOKEN` no puede crear tags por políticas del repo)
 - `DOCKERHUB_REPOSITORY` (opcional, formato `namespace/name`; si no se define usa `${DOCKERHUB_USERNAME}/tasks`)
 
+## Integración continua (GitHub Actions)
+
+El workflow `.github/workflows/ci.yml` valida el proyecto con Python 3.11 y `pytest` en pull requests y pushes hacia `main` o `develop`.
+
+La explicación completa está en `docs/ci.md`.
+
+## Entrega continua (Jenkins)
+
+El archivo `Jenkinsfile` define un pipeline CD para clonar el repositorio, construir la imagen Docker y publicarla en un registro.
+
+La explicación completa está en `docs/cd-jenkins.md`.
+
 ## Turso token sin exponerlo en Git (ArgoCD/Helm)
 
 Puedes usar un Secret ya existente en el cluster y referenciarlo desde Helm.
