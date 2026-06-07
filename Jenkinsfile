@@ -1,5 +1,5 @@
 pipeline {
-    agent any
+    agent { label 'jenkins-jenkins-agent' }
 
     environment {
         DOCKER_REGISTRY = 'docker.io'
@@ -17,7 +17,9 @@ pipeline {
 
         stage('Construir imagen Docker') {
             steps {
-                sh 'docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} -t ${DOCKER_IMAGE}:latest .'
+                container('docker') {
+                    sh 'docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} -t ${DOCKER_IMAGE}:latest .'
+                }
             }
         }
 
@@ -30,14 +32,16 @@ pipeline {
                         passwordVariable: 'DOCKER_PASSWORD'
                     )
                 ]) {
-                    sh '''
-                        echo "$DOCKER_PASSWORD" | docker login "$DOCKER_REGISTRY" \
-                            --username "$DOCKER_USERNAME" \
-                            --password-stdin
+                    container('docker') {
+                        sh '''
+                            echo "$DOCKER_PASSWORD" | docker login "$DOCKER_REGISTRY" \
+                                --username "$DOCKER_USERNAME" \
+                                --password-stdin
 
-                        docker push "${DOCKER_IMAGE}:${IMAGE_TAG}"
-                        docker push "${DOCKER_IMAGE}:latest"
-                    '''
+                            docker push "${DOCKER_IMAGE}:${IMAGE_TAG}"
+                            docker push "${DOCKER_IMAGE}:latest"
+                        '''
+                    }
                 }
             }
         }
@@ -45,7 +49,11 @@ pipeline {
 
     post {
         always {
-            sh 'docker logout ${DOCKER_REGISTRY} || true'
+            script {
+                container('docker') {
+                    sh 'docker logout ${DOCKER_REGISTRY} || true'
+                }
+            }
         }
         success {
             echo "Imagen publicada: ${DOCKER_IMAGE}:${IMAGE_TAG}"
