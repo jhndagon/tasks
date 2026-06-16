@@ -49,7 +49,7 @@ Regla de dependencias:
 
 ## Requisitos
 
-- Python 3.9+
+- Python 3.11+
 - `pip`
 
 ## Configuración
