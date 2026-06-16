@@ -49,7 +49,7 @@ Regla de dependencias:
 
 ## Requisitos
 
-- Python 3.9+
+- Python 3.11+
 - `pip`
 
 ## Configuración
@@ -171,7 +171,13 @@ Secrets requeridos en GitHub:
 
 ## Integración continua (GitHub Actions)
 
-El workflow `.github/workflows/ci.yml` valida el proyecto con Python 3.11 y `pytest` en pull requests y pushes hacia `main` o `develop`.
+El workflow `.github/workflows/ci.yml` valida el proyecto con Python 3.11, `pytest`, auditoria de dependencias con `pip-audit`, Snyk y SonarQube en pull requests y pushes hacia `main` o `develop`.
+
+Secrets opcionales para seguridad:
+
+- `SNYK_TOKEN`
+- `SONAR_TOKEN`
+- `SONAR_HOST_URL`
 
 La explicación completa está en `docs/ci.md`.
 
@@ -226,11 +232,17 @@ metrics:
     enabled: true
     additionalLabels:
       release: prometheus
+  prometheusRule:
+    enabled: true
+    additionalLabels:
+      release: prometheus
 ```
 
 El valor de `additionalLabels` debe coincidir con el selector configurado en tu
 instalación de Prometheus. Después, configura Prometheus como data source de
-Grafana y construye paneles usando las series anteriores.
+Grafana y usa el dashboard exportable `docs/grafana/tasks-api-dashboard.json`.
+
+El documento tecnico de la Actividad 1 esta en `docs/actividad-1-ci-cd.md`.
 
 La configuración de `pytest` ya incluye `pythonpath = .` en `pytest.ini`, por lo que no necesitas exportar `PYTHONPATH` manualmente.
 

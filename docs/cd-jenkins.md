@@ -8,7 +8,7 @@ Este pipeline está pensado como una definición base de CD. Para ejecutarlo en 
 
 El pipeline usa sintaxis declarativa de Jenkins:
 
-- `agent any`: permite que Jenkins ejecute el pipeline en cualquier agente disponible.
+- `agent { label 'jenkins-jenkins-agent' }`: selecciona el agente Kubernetes preparado para ejecutar el pipeline.
 - `environment`: centraliza los valores reutilizables del pipeline.
 - `stages`: define las fases principales del proceso de CD.
 - `post`: define acciones que se ejecutan al finalizar el pipeline.
@@ -42,6 +42,8 @@ El stage `Construir imagen Docker` crea la imagen Docker usando el `Dockerfile` 
 docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} -t ${DOCKER_IMAGE}:latest .
 ```
 
+El comando se ejecuta dentro del contenedor `docker` del agente Jenkins.
+
 La imagen se construye con dos tags:
 
 - `${IMAGE_TAG}`: tag único asociado al número de build de Jenkins.
@@ -69,6 +71,8 @@ usernamePassword(
 ```
 
 Jenkins inyecta temporalmente el usuario y la contraseña en variables de entorno. El password se envía a `docker login` usando `--password-stdin`, evitando escribir el secreto directamente en el comando.
+
+Los comandos Docker de autenticacion y publicacion tambien se ejecutan dentro del contenedor `docker` del agente.
 
 ## Acciones posteriores
 
