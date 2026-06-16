@@ -46,3 +46,20 @@ Actualmente esa validación está deshabilitada porque todo el bloque está come
 La ejecución pasa correctamente cuando todas las dependencias se instalan y `pytest -q` finaliza sin errores.
 
 Si falla, el PR o commit queda marcado con error en GitHub Actions y se debe revisar el log del paso que falló, normalmente `Install dependencies` o `Run test suite`.
+
+## Job de seguridad
+
+El job `security` se muestra como `Security scans` y ejecuta controles complementarios:
+
+1. Instala dependencias del proyecto.
+2. Ejecuta `pip-audit` contra `requirements.txt` y `requirements-dev.txt`.
+3. Ejecuta Snyk si el repositorio tiene configurado el secret `SNYK_TOKEN`.
+4. Ejecuta SonarQube si existen `SONAR_TOKEN` y `SONAR_HOST_URL`.
+
+La configuracion de SonarQube esta en `sonar-project.properties`. El analisis usa `app` como codigo fuente y `tests` como suite de pruebas.
+
+Secrets requeridos para escaneos externos:
+
+- `SNYK_TOKEN`
+- `SONAR_TOKEN`
+- `SONAR_HOST_URL`

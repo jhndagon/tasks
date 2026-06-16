@@ -31,6 +31,12 @@ metrics:
     interval: 30s
     scrapeTimeout: 10s
     additionalLabels: {}
+  prometheusRule:
+    enabled: false
+    additionalLabels: {}
+    errorRateThreshold: 0.05
+    latencyP95ThresholdSeconds: 1
+    for: 5m
 
 ingress:
   enabled: false
