@@ -5,6 +5,7 @@ from fastapi import FastAPI
 
 from app.infrastructure.config.env import get_settings
 from app.infrastructure.http.rest.routes import router as api_router
+from app.infrastructure.observability.metrics import instrument_app
 from app.infrastructure.persistence.sqlalchemy.database import close_db, init_db
 
 
@@ -16,6 +17,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="Tasks Microservice", version="0.1.0", lifespan=lifespan)
+instrument_app(app)
 app.include_router(api_router)
 
 

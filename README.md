@@ -7,6 +7,7 @@ Microservicio REST para gestión de tareas (CRUD) construido con FastAPI, SQLAlc
 Expone una API HTTP para:
 
 - Verificar estado del servicio (`/healthz`)
+- Exponer métricas Prometheus (`/metrics`)
 - Crear tareas
 - Listar tareas
 - Actualizar tareas
@@ -21,6 +22,7 @@ Modelo principal:
 
 - `GET /`
 - `GET /healthz`
+- `GET /metrics`
 - `GET /tasks`
 - `GET /tasks?done=true|false`
 - `GET /tasks?title_contains=<texto>`
@@ -207,6 +209,28 @@ Asi el token no queda en `values.yaml` ni en el repo.
 ```bash
 pytest -q
 ```
+
+## Métricas con Prometheus y Grafana
+
+El endpoint `GET /metrics` expone métricas en formato Prometheus:
+
+- `http_requests_total`: solicitudes por método, plantilla de ruta y código HTTP.
+- `http_request_duration_seconds`: histograma de latencia por método y ruta.
+- `http_requests_in_progress`: solicitudes activas por método.
+
+Para clusters con Prometheus Operator, habilita el `ServiceMonitor`:
+
+```yaml
+metrics:
+  serviceMonitor:
+    enabled: true
+    additionalLabels:
+      release: prometheus
+```
+
+El valor de `additionalLabels` debe coincidir con el selector configurado en tu
+instalación de Prometheus. Después, configura Prometheus como data source de
+Grafana y construye paneles usando las series anteriores.
 
 La configuración de `pytest` ya incluye `pythonpath = .` en `pytest.ini`, por lo que no necesitas exportar `PYTHONPATH` manualmente.
 
