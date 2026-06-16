@@ -22,6 +22,39 @@ def test_healthcheck(client: TestClient):
     assert response.json() == {"status": "ok"}
 
 
+def test_metrics_exposes_prometheus_http_metrics(client: TestClient):
+    task_response = client.post("/tasks", json={"title": "Metrica"})
+    assert task_response.status_code == 201
+    task_id = task_response.json()["id"]
+
+    update_response = client.put(f"/tasks/{task_id}", json={"done": True})
+    assert update_response.status_code == 200
+
+    response = client.get("/metrics")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/plain")
+    assert "http_requests_total" in response.text
+    assert 'method="POST",route="/tasks",status_code="201"' in response.text
+    assert (
+        'method="PUT",route="/tasks/{task_id}",status_code="200"' in response.text
+    )
+    assert "http_request_duration_seconds" in response.text
+    assert "http_requests_in_progress" in response.text
+    assert 'route="/metrics"' not in response.text
+
+
+def test_metrics_groups_unknown_routes_to_limit_cardinality(client: TestClient):
+    missing_path = "/missing/123456"
+    missing_response = client.get(missing_path)
+    assert missing_response.status_code == 404
+
+    response = client.get("/metrics")
+
+    assert 'method="GET",route="unmatched",status_code="404"' in response.text
+    assert f'route="{missing_path}"' not in response.text
+
+
 def test_crud_flow(client: TestClient):
     create_response = client.post("/tasks", json={"title": "Primera tarea"})
     assert create_response.status_code == 201
